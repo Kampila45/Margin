@@ -21,7 +21,8 @@ services:
     name: margin-backend
     runtime: image
     image:
-      dockerfilePath: backend/Dockerfile
+      rootDir: backend
+      dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
     plan: free
     region: oregon
     healthCheckPath: /api/v1/health
