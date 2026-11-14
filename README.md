@@ -15,7 +15,7 @@ Margin provides two primary ways to explore and understand information:
 
 > Walkthrough covering PDF upload & indexing, grounded Q&A with page-level citation jumps & text highlighting, live read-only PostgreSQL connection, natural-language SQL querying with Vega-Lite chart generation, and connection disconnect.
 
-https://github.com/user-attachments/assets/ec623d22-9a86-42ca-bfd4-cf0bcd0b4db8
+https://github.com/user-attachments/assets/e39044e1-514f-44a7-88ae-dfd4e7501b61
 
 ---
 

@@ -15,6 +15,7 @@ import {
 
 const pdfMocks = vi.hoisted(() => ({
   getDocument: vi.fn(),
+  loadingTaskDestroy: vi.fn(),
   getPage: vi.fn(),
   pageRender: vi.fn(),
   getTextContent: vi.fn(),
@@ -73,13 +74,14 @@ describe("PdfDocumentStage zoom performance", () => {
     };
 
     pdfMocks.getPage.mockResolvedValue(mockPage);
+    pdfMocks.loadingTaskDestroy.mockResolvedValue(undefined);
     pdfMocks.getDocument.mockReturnValue({
       promise: Promise.resolve({
         numPages: 3,
         getPage: pdfMocks.getPage,
         destroy: vi.fn().mockResolvedValue(undefined),
       }),
-      destroy: vi.fn().mockResolvedValue(undefined),
+      destroy: pdfMocks.loadingTaskDestroy,
     });
     pdfMocks.textLayerRender.mockResolvedValue(undefined);
   });
@@ -213,5 +215,34 @@ describe("PdfDocumentStage zoom performance", () => {
     expect(pdfMocks.getPage).toHaveBeenCalledTimes(getPageCallsBeforeJump);
     expect(pdfMocks.pageRender).toHaveBeenCalledTimes(rendersBeforeJump);
     expect(screen.queryByLabelText("Rendering page")).not.toBeInTheDocument();
+  });
+
+  it("keeps the resolved loading task alive across page switches and zoom changes", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    });
+
+    const { rerender, unmount } = render(
+      <QueryClientProvider client={queryClient}>
+        <PdfDocumentStage document={samplePdfDocument} pageNumber={1} zoomPercentage={100} />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(pdfMocks.pageRender).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <PdfDocumentStage document={samplePdfDocument} pageNumber={3} zoomPercentage={140} />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(pdfMocks.pageRender).toHaveBeenCalledTimes(2);
+    });
+
+    expect(pdfMocks.loadingTaskDestroy).not.toHaveBeenCalled();
+    unmount();
   });
 });

@@ -659,6 +659,8 @@ export function PdfDocumentStage({
             void pdfDoc.destroy();
             return;
           }
+          // Hand off lifetime ownership to loadedPdfCacheRef so page changes do not destroy the active worker.
+          activeLoadingTask = null;
           loadedPdfCacheRef.current = { docId: document.id, pdfDoc };
         }
 
