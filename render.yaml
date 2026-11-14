@@ -26,7 +26,9 @@ services:
     plan: free
     region: oregon
     healthCheckPath: /api/v1/health
-    preDeployCommand: alembic upgrade head
+    # NOTE: Render Free tier does not support preDeployCommand. Run migrations
+    # manually against Neon before/after deploying:
+    #   DATABASE_URL=<neon-url> .venv/bin/alembic upgrade head
     # NOTE: Render Free tier has NO persistent disk. Uploaded files are stored
     # on the container's ephemeral filesystem and are LOST on every restart or
     # spin-down (the service idles out after 15 minutes). To keep uploads,
