@@ -128,7 +128,7 @@ services:
       # CORS — UPDATE AFTER FIRST DEPLOY to the real frontend URL, e.g.
       #   https://margin-frontend.onrender.com
       - key: CORS_ORIGINS
-        value: "https://margin-frontend.onrender.com"
+        value: "https://margin-frontend-eyv7.onrender.com"
 
   # ---------------------------------------------------------------------------
   # Frontend — static React + Vite build
@@ -151,7 +151,7 @@ services:
       # UPDATE AFTER FIRST DEPLOY to the real backend URL, e.g.
       #   https://margin-backend.onrender.com/api/v1
       - key: VITE_API_BASE_URL
-        value: "https://margin-backend.onrender.com/api/v1"
+        value: "https://margin-backend-cj0n.onrender.com/api/v1"
 
 # -----------------------------------------------------------------------------
 # Database — uses Neon (external) instead of Render-managed Postgres.
