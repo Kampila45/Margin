@@ -306,9 +306,7 @@ class DocumentService:
         try:
             raw_bytes = await self._storage.read_bytes(document.stored_path)
         except FileNotFoundError as exc:
-            raise DocumentNotFoundError(
-                "The stored document file could not be located."
-            ) from exc
+            raise DocumentNotFoundError("The stored document file could not be located.") from exc
         return StoredDocumentFile(
             raw_bytes=raw_bytes,
             content_type=document.content_type,

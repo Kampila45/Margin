@@ -6,7 +6,8 @@
 # First-deploy steps:
 #   1. Push this file to your repo.
 #   2. In Render → New → Blueprint, point it at the repo.
-#   3. Fill in the two required API keys (XAI_API_KEY, GEMINI_API_KEY).
+#   3. Fill in the env vars marked `sync: false` (DATABASE_URL, GROQ_API_KEY,
+#      GEMINI_API_KEY, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY).
 #   4. Deploy. Once both services get URLs, update CORS_ORIGINS (backend)
 #      and VITE_API_BASE_URL (frontend) to the real Render URLs and
 #      redeploy. CREDENTIAL_ENCRYPTION_SECRET is auto-generated and should
@@ -40,27 +41,25 @@ services:
 
       # Database connection — use a Neon Postgres URL (free tier works, supports
       # pgvector). The app auto-normalizes Neon's `sslmode=require` param for
-      # asyncpg. REQUIRED — replace with your Neon connection string.
+      # asyncpg. Secret — set in the Render dashboard, never commit it here.
       - key: DATABASE_URL
-        value: "postgresql://user:password@ep-xxxx.aws.neon.tech/neondb?sslmode=require"
+        sync: false
 
-      # File storage — use "s3" for persistent object storage (AWS S3, Cloudflare
-      # R2, MinIO). On the Free tier, local storage is ephemeral; S3 keeps uploads
-      # across restarts. For local dev use "local".
+      # File storage — Cloudflare R2 (S3-compatible). On the Free tier, local
+      # storage is ephemeral; R2 keeps uploads across restarts.
       - key: STORAGE_PROVIDER
         value: s3
       - key: S3_BUCKET
-        value: "your-bucket-name"
+        value: margin
       - key: S3_REGION
-        value: "us-east-1"
-      # For Cloudflare R2 or MinIO, set this to your endpoint and leave S3_REGION empty
-      # (or set it to "auto"). For AWS S3, leave this empty.
+        value: auto
       - key: S3_ENDPOINT_URL
-        value: ""
+        value: https://7028480a2954eff360ed9a906d81f395.r2.cloudflarestorage.com
+      # Secrets — set these in the Render dashboard, never commit them here.
       - key: S3_ACCESS_KEY_ID
-        value: "your-access-key-id"
+        sync: false
       - key: S3_SECRET_ACCESS_KEY
-        value: "your-secret-access-key"
+        sync: false
       - key: S3_KEY_PREFIX
         value: documents
       # Only used when STORAGE_PROVIDER=local.
@@ -85,23 +84,24 @@ services:
       - key: SELECTION_SURROUNDING_WINDOW
         value: "1"
 
-      # LLM provider for reasoning, citations, and SQL: "grok" (xAI) or "gemini".
+      # LLM provider for reasoning, citations, and SQL. "groq" (Groq, uses
+      # GROQ_API_KEY), "grok" (xAI, uses XAI_API_KEY), or "gemini".
       - key: LLM_PROVIDER
-        value: grok
-      # REQUIRED — replace with a real key before deploying.
-      - key: XAI_API_KEY
-        value: "your-xai-api-key-here"
+        value: groq
+      # Secret — set in the Render dashboard, never commit it here.
+      - key: GROQ_API_KEY
+        sync: false
       - key: GROK_MODEL
-        value: grok-2-latest
+        value: openai/gpt-oss-120b
       - key: GROK_API_BASE
-        value: https://api.x.ai/v1
+        value: https://api.groq.com/openai/v1
       - key: GROK_TIMEOUT_SECONDS
         value: "30.0"
 
       # Gemini — embeddings are always required (regardless of LLM provider).
-      # REQUIRED — replace with a real key before deploying.
+      # Secret — set in the Render dashboard, never commit it here.
       - key: GEMINI_API_KEY
-        value: "your-gemini-api-key-here"
+        sync: false
       - key: GEMINI_GENERATION_MODEL
         value: gemini-flash-latest
       - key: GEMINI_EMBEDDING_MODEL
@@ -136,6 +136,12 @@ services:
     runtime: static
     buildCommand: cd frontend && npm ci && npm run build
     staticPublishPath: frontend/dist
+    # SPA client-side routing: serve index.html for any path that isn't a real
+    # file, so deep links (/library, /reader/:id, /sql) survive a refresh.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     buildFilter:
       paths:
         - frontend/**

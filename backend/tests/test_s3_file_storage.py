@@ -173,4 +173,3 @@ def test_s3_settings_validation_and_provider_selection(tmp_path: Path) -> None:
         STORAGE_DIR=tmp_path / "uploads",
     )
     assert isinstance(get_storage(local_settings), LocalFileStorage)
-

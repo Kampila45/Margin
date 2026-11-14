@@ -77,7 +77,7 @@ jobs:
         run: uv python install 3.12
 
       - name: Install backend dependencies
-        run: uv sync --frozen
+        run: uv sync --frozen --extra dev
 
       - name: Run Ruff linter
         run: uv run ruff check .
