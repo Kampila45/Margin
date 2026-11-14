@@ -178,10 +178,10 @@ export function DocumentLibraryView() {
           <button
             type="button"
             onClick={() => setUploadModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-on-primary font-label-md text-xs font-semibold hover:bg-primary-container transition-colors shadow-2xs active:scale-[0.98] shrink-0"
           >
-            <span className="material-symbols-outlined text-base">add</span>
-            <span>Upload First Document</span>
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            <span>Upload Document</span>
           </button>
         </div>
       ) : (

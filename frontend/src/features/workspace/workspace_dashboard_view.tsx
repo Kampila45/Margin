@@ -316,9 +316,9 @@ export function WorkspaceDashboardView() {
                 <button
                   type="button"
                   onClick={() => setUploadModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-on-primary font-label-md text-xs font-semibold"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-on-primary font-label-md text-xs font-semibold hover:bg-primary-container transition-colors shadow-2xs active:scale-[0.98] shrink-0"
                 >
-                  <span className="material-symbols-outlined text-sm">add</span>
+                  <span className="material-symbols-outlined text-[18px]">add</span>
                   <span>Upload Document</span>
                 </button>
               </div>
