@@ -1,0 +1,158 @@
+# Margin — Render Blueprint
+#
+# Deploy the full stack in one click: backend (FastAPI), frontend (static
+# React/Vite), and a managed PostgreSQL + pgvector database.
+#
+# First-deploy steps:
+#   1. Push this file to your repo.
+#   2. In Render → New → Blueprint, point it at the repo.
+#   3. Fill in the two required API keys (XAI_API_KEY, GEMINI_API_KEY).
+#   4. Deploy. Once both services get URLs, update CORS_ORIGINS (backend)
+#      and VITE_API_BASE_URL (frontend) to the real Render URLs and
+#      redeploy. CREDENTIAL_ENCRYPTION_SECRET is auto-generated and should
+#      never be changed after documents/SQL connections exist.
+
+services:
+  # ---------------------------------------------------------------------------
+  # Backend — FastAPI + PydanticAI
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: margin-backend
+    runtime: image
+    image:
+      dockerfilePath: backend/Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /api/v1/health
+    preDeployCommand: alembic upgrade head
+    # NOTE: Render Free tier has NO persistent disk. Uploaded files are stored
+    # on the container's ephemeral filesystem and are LOST on every restart or
+    # spin-down (the service idles out after 15 minutes). To keep uploads,
+    # either upgrade to a paid plan and re-add a `disk` block, or swap the
+    # local storage adapter for S3/R2.
+    envVars:
+      - key: APP_ENV
+        value: Production
+      - key: APP_DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+
+      # Database connection — use a Neon Postgres URL (free tier works, supports
+      # pgvector). The app auto-normalizes Neon's `sslmode=require` param for
+      # asyncpg. REQUIRED — replace with your Neon connection string.
+      - key: DATABASE_URL
+        value: "postgresql://user:password@ep-xxxx.aws.neon.tech/neondb?sslmode=require"
+
+      # File storage — use "s3" for persistent object storage (AWS S3, Cloudflare
+      # R2, MinIO). On the Free tier, local storage is ephemeral; S3 keeps uploads
+      # across restarts. For local dev use "local".
+      - key: STORAGE_PROVIDER
+        value: s3
+      - key: S3_BUCKET
+        value: "your-bucket-name"
+      - key: S3_REGION
+        value: "us-east-1"
+      # For Cloudflare R2 or MinIO, set this to your endpoint and leave S3_REGION empty
+      # (or set it to "auto"). For AWS S3, leave this empty.
+      - key: S3_ENDPOINT_URL
+        value: ""
+      - key: S3_ACCESS_KEY_ID
+        value: "your-access-key-id"
+      - key: S3_SECRET_ACCESS_KEY
+        value: "your-secret-access-key"
+      - key: S3_KEY_PREFIX
+        value: documents
+      # Only used when STORAGE_PROVIDER=local.
+      - key: STORAGE_DIR
+        value: /tmp/margin-uploads
+
+      # Upload & document limits.
+      - key: MAX_UPLOAD_SIZE_BYTES
+        value: "20971520"
+      - key: MAX_PAGES_PER_DOCUMENT
+        value: "150"
+      - key: MAX_DOCUMENTS_PER_SESSION
+        value: "25"
+
+      # RAG chunking.
+      - key: CHUNK_TARGET_CHARS
+        value: "1200"
+      - key: CHUNK_OVERLAP_CHARS
+        value: "200"
+      - key: RETRIEVAL_TOP_K
+        value: "6"
+      - key: SELECTION_SURROUNDING_WINDOW
+        value: "1"
+
+      # LLM provider for reasoning, citations, and SQL: "grok" (xAI) or "gemini".
+      - key: LLM_PROVIDER
+        value: grok
+      # REQUIRED — replace with a real key before deploying.
+      - key: XAI_API_KEY
+        value: "your-xai-api-key-here"
+      - key: GROK_MODEL
+        value: grok-2-latest
+      - key: GROK_API_BASE
+        value: https://api.x.ai/v1
+      - key: GROK_TIMEOUT_SECONDS
+        value: "30.0"
+
+      # Gemini — embeddings are always required (regardless of LLM provider).
+      # REQUIRED — replace with a real key before deploying.
+      - key: GEMINI_API_KEY
+        value: "your-gemini-api-key-here"
+      - key: GEMINI_GENERATION_MODEL
+        value: gemini-flash-latest
+      - key: GEMINI_EMBEDDING_MODEL
+        value: gemini-embedding-001
+      - key: GEMINI_EMBEDDING_DIMENSION
+        value: "768"
+      - key: GEMINI_TIMEOUT_SECONDS
+        value: "30.0"
+
+      # SQL Assistant security. CREDENTIAL_ENCRYPTION_SECRET is auto-generated
+      # and must stay fixed after first deploy (changing it makes stored
+      # connection URLs undecryptable).
+      - key: CREDENTIAL_ENCRYPTION_SECRET
+        generateValue: true
+      - key: SQL_ALLOW_PRIVATE_HOSTS
+        value: "false"
+      - key: SQL_QUERY_TIMEOUT_SECONDS
+        value: "5.0"
+      - key: SQL_MAX_ROWS
+        value: "100"
+
+      # CORS — UPDATE AFTER FIRST DEPLOY to the real frontend URL, e.g.
+      #   https://margin-frontend.onrender.com
+      - key: CORS_ORIGINS
+        value: "https://margin-frontend.onrender.com"
+
+  # ---------------------------------------------------------------------------
+  # Frontend — static React + Vite build
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: margin-frontend
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: frontend/dist
+    buildFilter:
+      paths:
+        - frontend/**
+    envVars:
+      # UPDATE AFTER FIRST DEPLOY to the real backend URL, e.g.
+      #   https://margin-backend.onrender.com/api/v1
+      - key: VITE_API_BASE_URL
+        value: "https://margin-backend.onrender.com/api/v1"
+
+# -----------------------------------------------------------------------------
+# Database — uses Neon (external) instead of Render-managed Postgres.
+# In your Neon project:
+#   1. Enable the `vector` extension: CREATE EXTENSION vector;
+#   2. Run migrations from your local machine or via Render's preDeployCommand:
+#        DATABASE_URL=<neon-url> alembic upgrade head
+#   3. Paste the Neon connection string into the backend's DATABASE_URL env var
+#      (above) — the app handles Neon's `sslmode=require` automatically.
+# Neon free tier: no 90-day expiry, autoscales to zero, supports pgvector.
+# -----------------------------------------------------------------------------
+# (No Render `databases` block — Neon is managed separately.)

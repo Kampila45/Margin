@@ -1,0 +1,90 @@
+name: Margin CI — Security, Typecheck & Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-security-and-tests:
+    name: Frontend Supply-Chain Security & Quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24 (npm 11.10.0+ for min-release-age=30)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Verify npm version supports min-release-age
+        run: npm --version
+
+      - name: Verify exact version pinning in package.json (no ^ or ~ ranges)
+        run: |
+          node -e '
+            const pkg = require("./package.json");
+            const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+            const unpinned = Object.entries(allDeps).filter(([, v]) => /^[~^><=*]/.test(v));
+            if (unpinned.length > 0) {
+              console.error("Unpinned dependency ranges detected:", unpinned);
+              process.exit(1);
+            }
+          '
+
+      - name: Clean install dependencies with lifecycle scripts disabled
+        run: npm ci --ignore-scripts
+
+      - name: Verify registry signatures and provenance attestations
+        run: npm audit signatures
+
+      - name: Audit dependencies for high/critical vulnerabilities
+        run: npm audit --audit-level=high
+
+      - name: Run TypeScript strict typecheck
+        run: npm run typecheck
+
+      - name: Run Vitest unit tests
+        run: npm test
+
+      - name: Build production frontend bundle
+        run: npm run build
+
+  backend-quality-and-tests:
+    name: Backend Lint, Typecheck & Pytest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python 3.12
+        run: uv python install 3.12
+
+      - name: Install backend dependencies
+        run: uv sync --frozen
+
+      - name: Run Ruff linter
+        run: uv run ruff check .
+
+      - name: Run Mypy strict typechecker
+        run: uv run mypy app
+
+      - name: Run Pytest suite
+        run: uv run pytest
+

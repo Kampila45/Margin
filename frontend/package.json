@@ -1,0 +1,40 @@
+{
+  "name": "margin-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Margin — Read deeper. Understand more. Interactive document reader and grounded AI synthesis frontend.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "security:audit": "npm audit && npm audit signatures"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.104.1",
+    "pdfjs-dist": "4.10.38",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router-dom": "7.18.4",
+    "vega": "6.4.0",
+    "vega-embed": "7.3.0",
+    "vega-lite": "6.5.0",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "4.7.0",
+    "autoprefixer": "10.6.1",
+    "jsdom": "26.1.0",
+    "postcss": "8.5.29",
+    "tailwindcss": "3.4.19",
+    "typescript": "5.9.3",
+    "vite": "6.4.4",
+    "vitest": "5.0.3"
+  }
+}

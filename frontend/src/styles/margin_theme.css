@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #fbf8fc;
+    color: #1b1b1e;
+    font-family: "Geist", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 20;
+  font-size: 19px;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
+  user-select: none;
+}
+
+.material-symbols-filled {
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 20;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c6c5d7;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #767586;
+}
+
+/* PDF.js selectable text layer overlay for PDF Canvas rendering */
+.textLayer {
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  mix-blend-mode: multiply;
+  z-index: 2;
+}
+
+.textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.textLayer span.margin-pdf-citation-highlight {
+  background-color: rgba(250, 204, 21, 0.45);
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.45);
+  border-radius: 3px;
+  transition: background-color 0.25s ease;
+}
+
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+}
+
+.textLayer span.markedContent {
+  top: 0;
+  height: 0;
+}
+
+.textLayer span::-moz-selection,
+.textLayer ::-moz-selection {
+  color: transparent !important;
+  background: rgba(70, 72, 212, 0.22) !important;
+}
+
+.textLayer span::selection,
+.textLayer ::selection {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  background: rgba(70, 72, 212, 0.22) !important;
+}
+
+.textLayer br::-moz-selection,
+.textLayer br::selection {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  background: transparent !important;
+}
+
+.hiddenCanvasElement {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Adapt reader selection hint pill to the live toolbar pane width as sidebars resize */
+.reader-viewport-toolbar {
+  container-type: inline-size;
+}
+
+@container (max-width: 660px) {
+  .reader-selection-hint-full {
+    display: none;
+  }
+
+  .reader-selection-hint-short {
+    display: inline;
+  }
+}
+
+@container (max-width: 500px) {
+  .reader-selection-hint {
+    display: none;
+  }
+}
+
