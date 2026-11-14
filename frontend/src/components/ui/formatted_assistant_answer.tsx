@@ -182,16 +182,11 @@ function renderInlineFormatting(
                 </span>
               );
             }
-            const targetCitation: CitationResponse =
-              resolvedClaimContext.length >= 6
-                ? { ...matched, excerpt: resolvedClaimContext }
-                : matched;
-
             return (
               <button
                 key={`${key}-c-${citationIdx}`}
                 type="button"
-                onClick={() => onNavigateToCitation(targetCitation)}
+                onClick={() => onNavigateToCitation(matched)}
                 title={`${matched.document_filename}${
                   matched.page_number !== null ? ` — Page ${matched.page_number}` : ""
                 }`}

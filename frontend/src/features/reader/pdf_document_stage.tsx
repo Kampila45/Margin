@@ -151,6 +151,41 @@ function normalizeTextForHighlight(input: string): string {
     .trim();
 }
 
+function paragraphMatchesPassage(
+  paragraph: string,
+  passage: string | null | undefined,
+): boolean {
+  const normPara = normalizeTextForHighlight(paragraph);
+  const normTarget = normalizeTextForHighlight(passage ?? "");
+  if (normTarget.length < 6 || normPara.length < 6) {
+    return false;
+  }
+
+  if (normPara.includes(normTarget) || normTarget.includes(normPara)) {
+    return true;
+  }
+
+  const targetWords = normTarget.split(" ").filter(Boolean);
+  const paraWords = normPara.split(" ").filter(Boolean);
+  if (targetWords.length < 4 || paraWords.length < 4) {
+    return false;
+  }
+
+  for (let n = Math.min(6, targetWords.length); n >= 4; n -= 1) {
+    for (let i = 0; i <= targetWords.length - n; i += 1) {
+      const ngram = targetWords.slice(i, i + n).join(" ");
+      if (ngram.length < 18) {
+        continue;
+      }
+      if (normPara.includes(ngram)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 export function highlightPassageInTextLayer(
   container: HTMLElement,
   passageText: string | null | undefined,
@@ -194,11 +229,48 @@ export function highlightPassageInTextLayer(
   }
 
   const fullPageNorm = normParts.join(" ");
-  let matchStart = fullPageNorm.indexOf(targetNorm);
-  let matchEnd = matchStart !== -1 ? matchStart + targetNorm.length : -1;
 
-  // Tier 2: If the claim has a `Label: Value` prefix (e.g. "Job Title: Senior Systems Analyst (one position)"),
-  // check if the value portion after the colon appears verbatim on the page.
+  function splitSentences(text: string): string[] {
+    return text
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 8);
+  }
+
+  const targetSentences = splitSentences(passageText ?? "");
+
+  let matchStart = -1;
+  let matchEnd = -1;
+
+  // Tier 1: Sentence-level exact matching — highlight only the sentences that
+  // appear verbatim on the page (avoids over-highlighting the whole chunk).
+  for (const sentence of targetSentences) {
+    const sentenceNorm = normalizeTextForHighlight(sentence);
+    if (sentenceNorm.length < 12) {
+      continue;
+    }
+    const idx = fullPageNorm.indexOf(sentenceNorm);
+    if (idx !== -1) {
+      if (matchStart === -1) {
+        matchStart = idx;
+        matchEnd = idx + sentenceNorm.length;
+      } else {
+        matchStart = Math.min(matchStart, idx);
+        matchEnd = Math.max(matchEnd, idx + sentenceNorm.length);
+      }
+    }
+  }
+
+  // Tier 1b: If no individual sentence matched, try the full excerpt verbatim.
+  if (matchStart === -1) {
+    const fullIdx = fullPageNorm.indexOf(targetNorm);
+    if (fullIdx !== -1) {
+      matchStart = fullIdx;
+      matchEnd = fullIdx + targetNorm.length;
+    }
+  }
+
+  // Tier 2: If the claim has a `Label: Value` prefix, check the value portion.
   if (matchStart === -1 && passageText && passageText.includes(":")) {
     const colonIdx = passageText.indexOf(":");
     const afterColonNorm = normalizeTextForHighlight(passageText.slice(colonIdx + 1));
@@ -211,15 +283,15 @@ export function highlightPassageInTextLayer(
     }
   }
 
-  // Tier 3: N-gram phrase cluster matching for slightly paraphrased claims or truncated excerpts.
+  // Tier 3: N-gram phrase cluster matching (tighter window to avoid over-highlighting).
   if (matchStart === -1) {
     const words = targetNorm.split(" ").filter(Boolean);
     if (words.length >= 3) {
       const ngramHits: Array<{ start: number; end: number }> = [];
-      const ngramSize = words.length >= 4 ? 4 : 3;
+      const ngramSize = words.length >= 5 ? 5 : 4;
       for (let i = 0; i <= words.length - ngramSize; i += 1) {
         const phrase = words.slice(i, i + ngramSize).join(" ");
-        if (phrase.length < 10) {
+        if (phrase.length < 14) {
           continue;
         }
         const idx = fullPageNorm.indexOf(phrase);
@@ -228,10 +300,10 @@ export function highlightPassageInTextLayer(
         }
       }
 
-      if (ngramHits.length === 0 && ngramSize === 4) {
-        for (let i = 0; i <= words.length - 3; i += 1) {
-          const phrase = words.slice(i, i + 3).join(" ");
-          if (phrase.length < 10) {
+      if (ngramHits.length === 0 && ngramSize > 4) {
+        for (let i = 0; i <= words.length - 4; i += 1) {
+          const phrase = words.slice(i, i + 4).join(" ");
+          if (phrase.length < 14) {
             continue;
           }
           const idx = fullPageNorm.indexOf(phrase);
@@ -245,28 +317,10 @@ export function highlightPassageInTextLayer(
         const firstHit = ngramHits[0];
         matchStart = firstHit.start;
         matchEnd = firstHit.end;
-        const maxWindow = Math.max(targetNorm.length + 140, 220);
+        const maxWindow = Math.max(160, targetNorm.length * 0.6);
         for (const hit of ngramHits) {
           if (hit.start >= firstHit.start && hit.end - firstHit.start <= maxWindow) {
             matchEnd = Math.max(matchEnd, hit.end);
-          }
-        }
-
-        // Expand one span earlier if that preceding line shares >= 2 word stems (e.g. "Analyse business needs...").
-        const targetStems = new Set(
-          words.filter((w) => w.length >= 5).map((w) => w.slice(0, 5)),
-        );
-        const firstOverlappingIdx = spanEntries.findIndex(
-          (entry) => entry.end > matchStart && entry.start < matchEnd,
-        );
-        if (firstOverlappingIdx > 0) {
-          const prevEntry = spanEntries[firstOverlappingIdx - 1];
-          if (prevEntry) {
-            const prevWords = prevEntry.norm.split(" ").filter((w) => w.length >= 5);
-            const sharedStems = prevWords.filter((w) => targetStems.has(w.slice(0, 5)));
-            if (sharedStems.length >= 2) {
-              matchStart = prevEntry.start;
-            }
           }
         }
       }
@@ -282,10 +336,7 @@ export function highlightPassageInTextLayer(
     }
   } else {
     for (const entry of spanEntries) {
-      if (
-        (entry.norm.length >= 10 && targetNorm.includes(entry.norm)) ||
-        (targetNorm.length >= 4 && entry.norm.includes(targetNorm))
-      ) {
+      if (entry.norm.length >= 20 && targetNorm.includes(entry.norm)) {
         matchedSpans.push(entry.span);
       }
     }
@@ -1198,12 +1249,10 @@ export function PdfDocumentStage({
           ) : (
             <div className="font-body-reading text-on-surface/90 space-y-6 leading-relaxed">
               {paragraphs.map((paragraph, idx) => {
-                const normPara = normalizeTextForHighlight(paragraph);
-                const normTarget = normalizeTextForHighlight(targetPassageToHighlight ?? "");
-                const isHighlighted =
-                  normTarget.length >= 6 &&
-                  (normPara.includes(normTarget.slice(0, 36)) ||
-                    normTarget.includes(normPara.slice(0, 36)));
+                const isHighlighted = paragraphMatchesPassage(
+                  paragraph,
+                  targetPassageToHighlight,
+                );
 
                 return (
                   <p

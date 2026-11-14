@@ -231,10 +231,7 @@ describe("Margin Frontend Reader Selection & Citation Workflows", () => {
     const inlineCitationButtons = screen.getAllByRole("button", { name: "[1]" });
     expect(inlineCitationButtons.length).toBeGreaterThanOrEqual(2);
     fireEvent.click(inlineCitationButtons[0]!);
-    expect(onNavigate).toHaveBeenCalledWith({
-      ...citation,
-      excerpt: "Organization: Water Resources Management Authority (WARMA).",
-    });
+    expect(onNavigate).toHaveBeenCalledWith(citation);
   });
 
   it("normalizes provider-native lenticular citation tags into clickable [1] pills", () => {
@@ -274,10 +271,7 @@ describe("Margin Frontend Reader Selection & Citation Workflows", () => {
     expect(screen.queryByText(/【1†L1-L4】/)).not.toBeInTheDocument();
     const button = screen.getByRole("button", { name: "[1]" });
     fireEvent.click(button);
-    expect(onNavigate).toHaveBeenCalledWith({
-      ...citation,
-      excerpt: "WARMA manages water resources.",
-    });
+    expect(onNavigate).toHaveBeenCalledWith(citation);
   });
 
   it("highlights matching PDF text-layer spans and updates current page when a citation is clicked", () => {
